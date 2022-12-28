@@ -1,0 +1,157 @@
+<html>
+<head>
+    <link rel="stylesheet" href="assets/css/bootstrap.css">
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/bootstrap.min.js"></script>
+    <style>
+        body{padding-bottom:140px}
+        .row{padding-bottom:10px}
+        .bs-docs-footer{padding-top:50px;padding-bottom:50px;margin-top:100px;color:#99979c;text-align:center;background-color:#2a2730}
+        .bs-docs-footer-links{padding-left:0;margin-bottom:20px}
+        .bs-docs-footer{text-align:left}
+        .bs-docs-footer-links li{display:inline-block}
+        .bs-docs-footer a{color:#fff}
+    </style>
+</head>
+<body>
+
+<div class="container navbar navbar-default">
+    <ul class="nav nav-tabs">
+        <li role="presentation" class="active"><a data-panel="moviesPanel" class="navigation">电影</a></li>
+    </ul>
+
+    <div>
+        <div class="row form-inline" style="margin-top: 1em;">
+            <div class="form-group">
+                <button type="button" class="btn btn-link" id="refresh">更新</button>
+            </div>
+            <div class="form-group">
+                <input type="text" class="form-control" id="searchMovies" placeholder="搜索电影">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12 col-sm-6 col-md-10"><h4>名称</h4></div>
+            <div class="col-xs-6 col-md-2"><h4>播放</h4></div>
+        </div>
+        <div id="moviesContainer"></div>
+    </div>
+
+</div>
+<footer style="display: none;" class="bs-docs-footer navbar navbar-default navbar-fixed-bottom">
+    <div class="container">
+        <ul class="bs-docs-footer-links">
+            <li><a>Movies 仓库</a></li>
+        </ul>
+    </div>
+</footer>
+
+</body>
+<script>
+
+    $(function(){
+        searchMovies(); //自动加载电影
+
+        loadPath();
+        $(document).on('click','.addPath',function(){
+            let str = '<div class="form-group">\n' +
+                '                    <div class="col-sm-10">\n' +
+                '                        <input type="text" name="path[]" class="form-control" placeholder="添加电影根路径">\n' +
+                '                    </div>\n' +
+                '                    <label class="text_align col-sm-2 control-label" style="text-align:left;">\n' +
+                '                        <span class="removePath glyphicon glyphicon-minus" aria-hidden="true"></span>\n' +
+                '                    </label>\n' +
+                '                </div>';
+            $(this).parents('.form-group').before(str);
+        });
+        $(document).on('click','.removePath',function(){
+            $(this).parents('.form-group').remove();
+        });
+
+
+
+
+
+
+
+
+
+        $(".navigation").click(function(){
+            $(this).parents('ul').children('li').removeClass('active');
+            $(this).parent().addClass('active')
+            $("#panelGroup").children('div').hide();
+            $("#" + $(this).attr('data-panel')).show();
+        });
+        $("#searchMovies").keypress(function (e) {
+            if (e.which == 13) {
+                searchMovies($(this).val())
+            }
+        });
+        $("#refresh").click(function() {
+            $.ajax({
+                url: "/reload",
+                type: "POST",
+                dataType: "json",
+                success: function(json, testStatus, xhr) {
+                    if (json.success) {
+                        location.reload();
+                    } else {
+                        alert(json.message)
+                    }
+                },
+                error: function () {
+                    alert('服务器错误')
+                }
+            });
+        });
+
+        $(document).on('click','.movie-item',function(){
+            var _this = $(this);
+            $.ajax({
+                url: "/play",
+                type: "POST",
+                dataType: "json",
+                data: {"movieName": $(_this).data('name'), "movieDir": $(_this).data('dir')},
+                success: function(json, testStatus, xhr) {
+                    if (json.success) {
+                        alert(json.data);
+                    } else {
+                        alert(json.message)
+                    }
+                },
+                error: function () {
+                    alert('服务器错误')
+                }
+            });
+        });
+    });
+    function searchMovies(movieName) {
+        $.ajax({
+            type: "get",
+            url: "/movies",
+            dataType: "json",
+            data: {"movieName": movieName},
+            success: function (json) {
+                var _moviesHtml = '';
+                $.each(json.data.movie, function(index, item){
+                    _moviesHtml += '<div class="row">\n' +
+                        '<div class="col-xs-12 col-sm-6 col-md-10" data-name="'+item.name+'" data-dir="'+item.path+'"><a title="'+item.path+'">'+item.name+'</a></div>\n' +
+                        '<div class="col-xs-6 col-md-2"><a class="movie-item" href="javascript:void(0);">播放</a></div>\n' +
+                        '</div>';
+                });
+                if (_moviesHtml == '') {
+                    _moviesHtml += '<div class="row">\n' +
+                        '<div class="col-xs-12 col-sm-6 col-md-12"><em>没有匹配记录<small></div>\n' +
+                        '</div>';
+                }
+                $("#moviesContainer").empty().append(_moviesHtml);
+            }
+        });
+    }
+
+    function loadPath(){
+
+    }
+</script>
+</html>
+
