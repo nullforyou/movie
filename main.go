@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -13,19 +14,12 @@ import (
 const moviePath string = "storage/path.json"
 const movieStorage string = "storage/movies.json"
 
-
-
-
-type Storage struct {
-	Storage []Dir `json:"storage"`
-}
-
-type Dir struct {
+type StorageDir struct {
 	Path string `json:"dir"`
 }
 
 type Movies struct {
-	Total int `json:"total"`
+	Total int     `json:"total"`
 	Movie []Movie `json:"movie"`
 }
 
@@ -38,7 +32,7 @@ func success(c *gin.Context, data interface{}) {
 	c.JSON(200, gin.H{
 		"success": true,
 		"message": "",
-		"data": data,
+		"data":    data,
 	})
 }
 
@@ -61,21 +55,22 @@ func main() {
 			"title": "电影列表",
 		})
 	})
+
 	router.Static("/assets", "./assets") //静态文件服务
 	router.Run(":8080")
 }
 
-func getPaths() Storage {
+func getPaths() []StorageDir {
+	var storageDir []StorageDir
 	jsonData, err := openFile(moviePath)
 	if err != nil {
-		return Storage{}
+		return storageDir
 	}
-	var storage Storage
-	err = json.Unmarshal(jsonData, &storage)
+	err = json.Unmarshal(jsonData, &storageDir)
 	if err != nil {
-		return Storage{}
+		return storageDir
 	}
-	return storage
+	return storageDir
 }
 
 func getMovies(movieName string) Movies {
@@ -90,7 +85,7 @@ func getMovies(movieName string) Movies {
 		for _, movie := range movies.Movie {
 			if strings.Contains(movie.Name, movieName) {
 				searchMovies.Movie = append(searchMovies.Movie, movie)
-				searchMovies.Total ++
+				searchMovies.Total++
 			}
 		}
 		movies = searchMovies
@@ -115,7 +110,7 @@ func openFile(filePath string) ([]byte, error) {
 		}
 	}(file)
 	b, err = io.ReadAll(file)
-	if err!= nil {
+	if err != nil {
 		return b, err
 	}
 	return b, nil
@@ -149,6 +144,8 @@ func movies(c *gin.Context) {
 }
 
 func play(c *gin.Context) {
+	cmd := exec.Command("D:\\Program Files\\DAUM\\PotPlayer\\PotPlayerMini64.exe", c.PostForm("movieDir"))
+	cmd.Run()
 	success(c, "正在唤醒播放器，请稍后！")
 }
 
@@ -156,7 +153,7 @@ func play(c *gin.Context) {
 func reloadMovies(c *gin.Context) {
 	paths := getPaths()
 	var movies Movies
-	for  _, dir := range paths.Storage {
+	for _, dir := range paths {
 		err := getPathFile(dir.Path, &movies)
 		if err != nil {
 			failed(c, err.Error())
@@ -183,7 +180,7 @@ func getPathFile(dir string, movies *Movies) error {
 		movie.Path = strings.Replace(filename, "\\", "/", -1)
 		movie.Name = fi.Name()
 		movies.Movie = append(movies.Movie, movie)
-		movies.Total ++
+		movies.Total++
 		return nil
 	})
 	if err != nil {

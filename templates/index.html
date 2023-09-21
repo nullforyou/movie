@@ -15,6 +15,22 @@
 </head>
 <body>
 
+<div id="alertDisplay">
+
+</div>
+
+<div id="alertBox" style="display: none;">
+    <div class="alert alert-success alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <strong>成功!</strong><em class="alert-text"></em>
+    </div>
+
+    <div class="alert alert-warning alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <strong>警告!</strong><em class="alert-text"></em>
+    </div>
+</div>
+
 <div class="container navbar navbar-default">
     <ul class="nav nav-tabs">
         <li role="presentation" class="active"><a data-panel="moviesPanel" class="navigation">电影</a></li>
@@ -32,7 +48,7 @@
 
         <div class="row">
             <div class="col-xs-12 col-sm-6 col-md-10"><h4>名称</h4></div>
-            <div class="col-xs-6 col-md-2"><h4>播放</h4></div>
+            <div class="col-xs-6 col-md-2"><h4>操作</h4></div>
         </div>
         <div id="moviesContainer"></div>
     </div>
@@ -71,11 +87,6 @@
 
 
 
-
-
-
-
-
         $(".navigation").click(function(){
             $(this).parents('ul').children('li').removeClass('active');
             $(this).parent().addClass('active')
@@ -106,6 +117,7 @@
         });
 
         $(document).on('click','.movie-item',function(){
+            successAlert();
             var _this = $(this);
             $.ajax({
                 url: "/play",
@@ -113,11 +125,6 @@
                 dataType: "json",
                 data: {"movieName": $(_this).data('name'), "movieDir": $(_this).data('dir')},
                 success: function(json, testStatus, xhr) {
-                    if (json.success) {
-                        alert(json.data);
-                    } else {
-                        alert(json.message)
-                    }
                 },
                 error: function () {
                     alert('服务器错误')
@@ -135,8 +142,8 @@
                 var _moviesHtml = '';
                 $.each(json.data.movie, function(index, item){
                     _moviesHtml += '<div class="row">\n' +
-                        '<div class="col-xs-12 col-sm-6 col-md-10" data-name="'+item.name+'" data-dir="'+item.path+'"><a title="'+item.path+'">'+item.name+'</a></div>\n' +
-                        '<div class="col-xs-6 col-md-2"><a class="movie-item" href="javascript:void(0);">播放</a></div>\n' +
+                        '<div class="col-xs-12 col-sm-6 col-md-10"><a title="'+item.path+'">'+item.name+'</a></div>\n' +
+                        '<div class="col-xs-6 col-md-2"><a class="movie-item" data-name="'+item.name+'" data-dir="'+item.path+'" href="javascript:void(0);">播放</a></div>\n' +
                         '</div>';
                 });
                 if (_moviesHtml == '') {
@@ -151,6 +158,20 @@
 
     function loadPath(){
 
+    }
+
+    function successAlert(){
+        $("#alertDisplay").append($("#alertBox").children(".alert-success").prop("outerHTML"))
+        setTimeout(function() {
+            $("#alertDisplay").empty();
+        }, 2e3)
+    }
+
+    function failedAlert(){
+        $("#alertDisplay").append($("#alertBox").children(".alert-success").prop("outerHTML"))
+        setTimeout(function() {
+            $("#alertDisplay").empty();
+        }, 5e3)
     }
 </script>
 </html>
