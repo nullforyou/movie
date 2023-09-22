@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-const movieSetting string = "storage/setting.json"
-const movieStorage string = "storage/movies.json"
+const movieSetting string = "resources/storage/setting.json"
+const movieStorage string = "resources/storage/movies.json"
 
 type Setting struct {
 	Player string   `json:"player"`
@@ -56,19 +56,15 @@ func main() {
 	router.POST("/setting", saveSetting)
 	router.POST("/reload", reloadMovies)
 	router.POST("/play", play)
-	router.LoadHTMLGlob("templates/*")
 
+	router.LoadHTMLGlob("./resources/templates/*")
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{
-			"title": "电影列表",
-		})
+		c.HTML(http.StatusOK, "index.html", nil)
 	})
 	router.GET("/setting.html", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "setting.html", gin.H{
-			"title": "电影设置",
-		})
+		c.HTML(http.StatusOK, "setting.html", nil)
 	})
-	router.Static("/assets", "./assets") //静态文件服务
+	router.Static("/assets", "./resources/assets") //静态文件服务
 	router.Run(":8080")
 }
 
