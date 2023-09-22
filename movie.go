@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
@@ -11,8 +12,13 @@ import (
 	"strings"
 )
 
-const moviePath string = "storage/path.json"
+const movieSetting string = "storage/setting.json"
 const movieStorage string = "storage/movies.json"
+
+type Setting struct {
+	Player string   `json:"player"`
+	Path   []string `json:"path"`
+}
 
 type StorageDir struct {
 	Path string `json:"dir"`
@@ -46,7 +52,8 @@ func failed(c *gin.Context, message string) {
 func main() {
 	router := gin.Default()
 	router.GET("/movies", movies)
-	router.GET("/path", path)
+	router.GET("/setting", getSetting)
+	router.POST("/setting", saveSetting)
 	router.POST("/reload", reloadMovies)
 	router.POST("/play", play)
 	router.LoadHTMLGlob("templates/*")
@@ -55,22 +62,32 @@ func main() {
 			"title": "电影列表",
 		})
 	})
+	router.GET("/setting.html", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "setting.html", gin.H{
+			"title": "电影设置",
+		})
+	})
 
 	router.Static("/assets", "./assets") //静态文件服务
 	router.Run(":8080")
 }
 
-func getPaths() []StorageDir {
-	var storageDir []StorageDir
-	jsonData, err := openFile(moviePath)
+func loadSetting() Setting {
+	var setting Setting
+	jsonData, err := openFile(movieSetting)
 	if err != nil {
-		return storageDir
+		return setting
 	}
-	err = json.Unmarshal(jsonData, &storageDir)
+	err = json.Unmarshal(jsonData, &setting)
 	if err != nil {
-		return storageDir
+		return setting
 	}
-	return storageDir
+	return setting
+}
+
+func getPaths() []string {
+	setting := loadSetting()
+	return setting.Path
 }
 
 func getMovies(movieName string) Movies {
@@ -143,10 +160,40 @@ func movies(c *gin.Context) {
 	success(c, movies)
 }
 
+func getSetting(c *gin.Context) {
+	success(c, loadSetting())
+}
+
 func play(c *gin.Context) {
-	cmd := exec.Command("D:\\Program Files\\DAUM\\PotPlayer\\PotPlayerMini64.exe", c.PostForm("movieDir"))
+	setting := loadSetting()
+	cmd := exec.Command(setting.Player, c.PostForm("movieDir"))
 	cmd.Run()
-	success(c, "正在唤醒播放器，请稍后！")
+	success(c, nil)
+}
+
+type formB struct {
+	Player string   `json:"player"`
+	Path   []string `json:"path"`
+}
+
+func saveSetting(c *gin.Context) {
+	setting := Setting{
+		Player: c.PostForm("player"),
+	}
+	for _, value := range c.PostFormMap("path") {
+		if !pathExists(value) {
+			failed(c, fmt.Sprintf("目录[%s]不存在", value))
+			return
+		}
+		setting.Path = append(setting.Path, value)
+	}
+	jsonStr, _ := json.Marshal(setting)
+	err := writeFile(movieSetting, string(jsonStr))
+	if err != nil {
+		failed(c, err.Error())
+		return
+	}
+	success(c, nil)
 }
 
 /** 重新加载文件目录里的电影 */
@@ -154,37 +201,53 @@ func reloadMovies(c *gin.Context) {
 	paths := getPaths()
 	var movies Movies
 	for _, dir := range paths {
-		err := getPathFile(dir.Path, &movies)
+		err := getPathFile(dir, &movies)
 		if err != nil {
 			failed(c, err.Error())
+			return
 		}
 	}
 	jsonStr, _ := json.Marshal(movies)
 	err := writeFile(movieStorage, string(jsonStr))
 	if err != nil {
 		failed(c, err.Error())
+		return
 	}
-	success(c, "操作成功")
+	success(c, nil)
 }
 
 /** 根据目录获取目录下所有的文件及其子文件，并追加到movies中 */
 func getPathFile(dir string, movies *Movies) error {
 	err := filepath.Walk(dir, func(filename string, fi os.FileInfo, err error) error {
+		if fi == nil {
+			return nil
+		}
 		if fi.IsDir() {
 			return nil
 		}
-		if filepath.Ext(filename) == ".xml" {
-			return nil
+		extension := filepath.Ext(filename)
+		if extension == ".mp4" || extension == ".rmvb" || extension == ".avi" || extension == ".flv" || extension == ".mkv" {
+			var movie Movie
+			movie.Path = strings.Replace(filename, "\\", "/", -1)
+			movie.Name = fi.Name()
+			movies.Movie = append(movies.Movie, movie)
+			movies.Total++
 		}
-		var movie Movie
-		movie.Path = strings.Replace(filename, "\\", "/", -1)
-		movie.Name = fi.Name()
-		movies.Movie = append(movies.Movie, movie)
-		movies.Total++
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return false
 }

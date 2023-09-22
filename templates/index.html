@@ -1,103 +1,84 @@
+<!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="assets/css/bootstrap.css">
-    <script src="assets/js/jquery.min.js"></script>
-    <script src="assets/js/bootstrap.min.js"></script>
-    <style>
-        body{padding-bottom:140px}
-        .row{padding-bottom:10px}
-        .bs-docs-footer{padding-top:50px;padding-bottom:50px;margin-top:100px;color:#99979c;text-align:center;background-color:#2a2730}
-        .bs-docs-footer-links{padding-left:0;margin-bottom:20px}
-        .bs-docs-footer{text-align:left}
-        .bs-docs-footer-links li{display:inline-block}
-        .bs-docs-footer a{color:#fff}
-    </style>
+    <meta charset="utf-8">
+    <title>{{ .title }}</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="assets/layui/css/layui.css" rel="stylesheet">
+    <link href="assets/css/index.css" rel="stylesheet">
 </head>
 <body>
-
-<div id="alertDisplay">
-
-</div>
-
-<div id="alertBox" style="display: none;">
-    <div class="alert alert-success alert-dismissible" role="alert">
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <strong>成功!</strong><em class="alert-text"></em>
-    </div>
-
-    <div class="alert alert-warning alert-dismissible" role="alert">
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <strong>警告!</strong><em class="alert-text"></em>
-    </div>
-</div>
-
-<div class="container navbar navbar-default">
-    <ul class="nav nav-tabs">
-        <li role="presentation" class="active"><a data-panel="moviesPanel" class="navigation">电影</a></li>
-    </ul>
-
-    <div>
-        <div class="row form-inline" style="margin-top: 1em;">
-            <div class="form-group">
-                <button type="button" class="btn btn-link" id="refresh">更新</button>
+<div class="layui-header ws-header ws-bg-light">
+    <div class="layui-container">
+        <div class="ws-logo">
+            <a class="logo" style="font-size:40px;" href="/">电影</a>
+        </div>
+        <div class="ws-header-assist">
+            <div class="layui-form layui-hide-xs ws-search" lay-filter="LAY-ws-header-component">
+                <div class="layui-form-select">
+                    <div class="layui-select-title">
+                        <input type="text" id="searchMovies" placeholder="搜索" value="" class="layui-input">
+                        <i class="layui-edge"></i>
+                    </div>
+                </div>
+                <i class="layui-icon layui-icon-search"></i>
             </div>
-            <div class="form-group">
-                <input type="text" class="form-control" id="searchMovies" placeholder="搜索电影">
-            </div>
+            <div class="layui-hide-xs ws-notice"></div>
         </div>
 
-        <div class="row">
-            <div class="col-xs-12 col-sm-6 col-md-10"><h4>名称</h4></div>
-            <div class="col-xs-6 col-md-2"><h4>操作</h4></div>
+        <div class="ws-header-menu">
+            <ul class="layui-nav layui-bg-gray ws-bg-light" id="LAY_NAV_TOP">
+                <li class="layui-nav-item" data-dir="docs">
+                    <button type="button" id="refresh" class="layui-btn layui-btn-primary layui-btn-radius">刷新</button>
+                </li>
+                <li class="layui-nav-item layui-this" data-dir="docs">
+                    <a href="#">电影</a>
+                </li>
+                <li class="layui-nav-item" data-dir="notes">
+                    <a href="/setting.html">设置</a>
+                </li>
+            </ul>
         </div>
-        <div id="moviesContainer"></div>
     </div>
-
 </div>
-<footer style="display: none;" class="bs-docs-footer navbar navbar-default navbar-fixed-bottom">
-    <div class="container">
-        <ul class="bs-docs-footer-links">
-            <li><a>Movies 仓库</a></li>
-        </ul>
-    </div>
-</footer>
+
+<div class="layui-container ws-container">
+    <table class="layui-table" lay-skin="nob" style="margin-left: 70px;">
+        <colgroup>
+            <col>
+            <col width="150">
+        </colgroup>
+        <thead>
+        <tr>
+            <th>电影名</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody id="moviesTbody"></tbody>
+    </table>
+</div>
+
+
+
+
 
 </body>
+<script src="assets/layui/layui.js"></script>
 <script>
-
-    $(function(){
+    let $, layer;
+    layui.use(['form'], function(){
+        $ = layui.jquery, layer = layui.layer;
+        let form = layui.form;
         searchMovies(); //自动加载电影
 
-        loadPath();
-        $(document).on('click','.addPath',function(){
-            let str = '<div class="form-group">\n' +
-                '                    <div class="col-sm-10">\n' +
-                '                        <input type="text" name="path[]" class="form-control" placeholder="添加电影根路径">\n' +
-                '                    </div>\n' +
-                '                    <label class="text_align col-sm-2 control-label" style="text-align:left;">\n' +
-                '                        <span class="removePath glyphicon glyphicon-minus" aria-hidden="true"></span>\n' +
-                '                    </label>\n' +
-                '                </div>';
-            $(this).parents('.form-group').before(str);
-        });
-        $(document).on('click','.removePath',function(){
-            $(this).parents('.form-group').remove();
-        });
-
-
-
-
-        $(".navigation").click(function(){
-            $(this).parents('ul').children('li').removeClass('active');
-            $(this).parent().addClass('active')
-            $("#panelGroup").children('div').hide();
-            $("#" + $(this).attr('data-panel')).show();
-        });
         $("#searchMovies").keypress(function (e) {
             if (e.which == 13) {
                 searchMovies($(this).val())
             }
         });
+
         $("#refresh").click(function() {
             $.ajax({
                 url: "/reload",
@@ -107,17 +88,17 @@
                     if (json.success) {
                         location.reload();
                     } else {
-                        alert(json.message)
+                        failedAlert(json.message);
                     }
                 },
                 error: function () {
-                    alert('服务器错误')
+                    failedAlert("服务器错误")
                 }
             });
         });
 
         $(document).on('click','.movie-item',function(){
-            successAlert();
+            successAlert("正在唤醒播放器");
             var _this = $(this);
             $.ajax({
                 url: "/play",
@@ -127,52 +108,57 @@
                 success: function(json, testStatus, xhr) {
                 },
                 error: function () {
-                    alert('服务器错误')
+                    failedAlert("服务器错误")
                 }
             });
         });
-    });
-    function searchMovies(movieName) {
-        $.ajax({
-            type: "get",
-            url: "/movies",
-            dataType: "json",
-            data: {"movieName": movieName},
-            success: function (json) {
-                var _moviesHtml = '';
-                $.each(json.data.movie, function(index, item){
-                    _moviesHtml += '<div class="row">\n' +
-                        '<div class="col-xs-12 col-sm-6 col-md-10"><a title="'+item.path+'">'+item.name+'</a></div>\n' +
-                        '<div class="col-xs-6 col-md-2"><a class="movie-item" data-name="'+item.name+'" data-dir="'+item.path+'" href="javascript:void(0);">播放</a></div>\n' +
-                        '</div>';
-                });
-                if (_moviesHtml == '') {
-                    _moviesHtml += '<div class="row">\n' +
-                        '<div class="col-xs-12 col-sm-6 col-md-12"><em>没有匹配记录<small></div>\n' +
-                        '</div>';
+
+        function searchMovies(movieName) {
+            $.ajax({
+                type: "get",
+                url: "/movies",
+                dataType: "json",
+                data: {"movieName": movieName},
+                success: function (json) {
+                    var _moviesHtml = '';
+                    $.each(json.data.movie, function(index, item){
+                        _moviesHtml += '<tr>\n' +
+                            '                <td><a title="'+item.path+'">'+item.name+'</a></td>\n' +
+                            '                <td><button type="button" data-name="'+item.name+'" data-dir="'+item.path+'" class="layui-btn layui-btn-xs layui-btn-normal movie-item">播放</button></td>\n' +
+                            '            </tr>';
+                    });
+                    if (_moviesHtml == '') {
+                        _moviesHtml += '<div class="row">\n' +
+                            '<div class="col-xs-12 col-sm-6 col-md-12"><em>没有匹配记录<small></div>\n' +
+                            '</div>';
+                    }
+                    $("#moviesTbody").empty().append(_moviesHtml);
                 }
-                $("#moviesContainer").empty().append(_moviesHtml);
-            }
-        });
-    }
+            });
+        }
 
-    function loadPath(){
+        function successAlert(message) {
+            layer.msg(message, {icon: 6});
+        }
 
-    }
-
-    function successAlert(){
-        $("#alertDisplay").append($("#alertBox").children(".alert-success").prop("outerHTML"))
-        setTimeout(function() {
-            $("#alertDisplay").empty();
-        }, 2e3)
-    }
-
-    function failedAlert(){
-        $("#alertDisplay").append($("#alertBox").children(".alert-success").prop("outerHTML"))
-        setTimeout(function() {
-            $("#alertDisplay").empty();
-        }, 5e3)
-    }
+        function failedAlert(message) {
+            layer.msg(message, {icon: 5});
+        }
+    });
 </script>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

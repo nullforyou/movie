@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ .title }}</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="assets/layui/css/layui.css" rel="stylesheet">
+    <link href="assets/css/index.css" rel="stylesheet">
+</head>
+<body>
+<div class="layui-header ws-header ws-bg-light">
+    <div class="layui-container">
+        <div class="ws-logo">
+            <a class="logo" style="font-size:40px;" href="/">电影</a>
+        </div>
+
+        <div class="ws-header-menu">
+            <ul class="layui-nav layui-bg-gray ws-bg-light" id="LAY_NAV_TOP">
+
+                <li class="layui-nav-item" data-dir="docs">
+                    <a href="/">电影</a>
+                </li>
+                <li class="layui-nav-item layui-this" data-dir="notes">
+                    <a href="#">设置</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="layui-container ws-container">
+    <div style="padding-top: 10px;">
+        <form class="form-horizontal layui-form" id="setting-Form" action="/setting" method="post" onSubmit="return false;">
+            <div class="layui-card">
+                <div class="layui-card-header">播放器exe文件地址</div>
+                <div class="layui-card-body">
+                    <div class="layui-form-item">
+                        <div class="layui-input-block">
+                            <input type="text" id="form-player" name="player" lay-verify="required" placeholder="请输入播放器exe文件地址" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layui-card">
+                <div class="layui-card-header">电影存放目录</div>
+                <div class="layui-card-body">
+                    <div id="movieDirBox"></div>
+                    <div class="layui-form-item">
+                        <div class="layui-input-inline layui-input-block layui-input-wrap" style="width: 500px;"></div>
+                        <button type="button" id="item-add" class="layui-btn layui-btn-primary layui-btn-radius layui-btn-xs">添加</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <div class="layui-input-block">
+                    <button type="submit" class="layui-btn" lay-submit lay-filter="settingFormBtn">立即提交</button>
+                    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="assets/layui/layui.js"></script>
+<script>
+    layui.use(['form'], function(){
+        let $ = layui.$, layer = layui.layer, form = layui.form;
+
+        loadSetting()
+
+        form.on('submit(settingFormBtn)', function(data){
+            let indexLoad = layer.load(0, {shade: 0.6});
+            $.ajax({
+                url: data.form.action,
+                type: data.form.method,
+                data: data.field,
+                dataType: "json",
+                success: function(json) {
+                    layer.close(indexLoad)
+                    if(json.success){
+                        successAlert("操作成功")
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1e3)
+                    }else{
+                        failedAlert(json.message)
+                    }
+                },
+                error: function () {
+                    layer.close(indexLoad)
+                    failedAlert("服务器错误")
+                }
+            });
+            return false; // 阻止默认 form 跳转
+        });
+
+
+        $("#movieDirBox").on('click', '.item-remove', function(){
+            $(this).parents(".layui-form-item").remove();
+            $("#movieDirBox").children(":last-child").append(getRemoveHtml());
+        })
+
+        $("#item-add").click(function(){
+            addItem(getItemHtml(""));
+        });
+
+        function loadSetting() {
+            let indexLoad = layer.load(0, {shade: 0.6});
+            $.ajax({
+                url: "/setting",
+                type: "get",
+                dataType: "json",
+                success: function(json) {
+                    layer.close(indexLoad)
+                    if (!json.success) {
+                        failedAlert(json.message)
+                        return;
+                    }
+                    $("#form-player").val(json.data.player);
+                    let itemHtml = "";
+                    $(json.data.path).each(function(index, value){
+                        itemHtml += getItemHtml(value);
+                    });
+                    addItem(itemHtml);
+                },
+                error: function () {
+                    layer.close(indexLoad)
+                    failedAlert("服务器错误")
+                }
+            });
+        }
+
+        function getItemHtml(value) {
+            return '<div class="layui-form-item">\n' +
+                '<div class="layui-input-inline layui-input-block layui-input-wrap" style="width: 500px;">\n' +
+                '       <input type="text" name="path[]" value="'+value+'" lay-verify="required" autocomplete="off" lay-affix="clear" class="layui-input">\n' +
+                '     </div>\n' +
+                '</div>';
+        }
+
+        function addItem(itemHtml) {
+            $("#movieDirBox").children().find('.item-remove').remove();
+            $("#movieDirBox").append(itemHtml)
+            $("#movieDirBox").children(":last-child").append(getRemoveHtml());
+        }
+
+        function getRemoveHtml() {
+            return '<button type="button" class="item-remove layui-btn layui-btn-primary layui-btn-radius layui-btn-xs" style="float: left;cursor:pointer;margin-top: 10px;">移除</button>';
+        }
+
+        function successAlert(message) {
+            layer.msg(message, {icon: 6});
+        }
+
+        function failedAlert(message) {
+            layer.msg(message, {icon: 5});
+        }
+    });
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
