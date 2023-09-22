@@ -57,6 +57,7 @@ func main() {
 	router.POST("/reload", reloadMovies)
 	router.POST("/play", play)
 	router.LoadHTMLGlob("templates/*")
+
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{
 			"title": "电影列表",
@@ -67,7 +68,6 @@ func main() {
 			"title": "电影设置",
 		})
 	})
-
 	router.Static("/assets", "./assets") //静态文件服务
 	router.Run(":8080")
 }
