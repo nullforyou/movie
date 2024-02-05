@@ -33,6 +33,9 @@
                 <li class="layui-nav-item" data-dir="docs">
                     <button type="button" id="refresh" class="layui-btn layui-btn-primary layui-btn-radius">刷新</button>
                 </li>
+                <li class="layui-nav-item" data-dir="notes">
+                    <button type="button" id="clearing" class="layui-btn layui-btn-primary layui-btn-radius">清理</button>
+                </li>
                 <li class="layui-nav-item layui-this" data-dir="docs">
                     <a href="#">电影</a>
                 </li>
@@ -82,6 +85,24 @@
         $("#refresh").click(function() {
             $.ajax({
                 url: "/reload",
+                type: "POST",
+                dataType: "json",
+                success: function(json, testStatus, xhr) {
+                    if (json.success) {
+                        location.reload();
+                    } else {
+                        failedAlert(json.message);
+                    }
+                },
+                error: function () {
+                    failedAlert("服务器错误")
+                }
+            });
+        });
+
+        $("#clearing").click(function() {
+            $.ajax({
+                url: "/clearing",
                 type: "POST",
                 dataType: "json",
                 success: function(json, testStatus, xhr) {

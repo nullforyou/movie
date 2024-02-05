@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -30,8 +31,9 @@ type Movies struct {
 }
 
 type Movie struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 func success(c *gin.Context, data interface{}) {
@@ -56,6 +58,7 @@ func main() {
 	router.POST("/setting", saveSetting)
 	router.POST("/reload", reloadMovies)
 	router.POST("/play", play)
+	router.POST("/clearing", clearing)
 
 	router.LoadHTMLGlob("./resources/templates/*")
 	router.GET("/", func(c *gin.Context) {
@@ -192,6 +195,19 @@ func saveSetting(c *gin.Context) {
 	success(c, nil)
 }
 
+/** 清理删除包含[torrent]后缀的文件 **/
+func clearing(c *gin.Context) {
+	paths := getPaths()
+	for _, dir := range paths {
+		err := clearPathFile(dir)
+		if err != nil {
+			failed(c, err.Error())
+			return
+		}
+	}
+	success(c, nil)
+}
+
 /** 重新加载文件目录里的电影 */
 func reloadMovies(c *gin.Context) {
 	paths := getPaths()
@@ -212,8 +228,54 @@ func reloadMovies(c *gin.Context) {
 	success(c, nil)
 }
 
-/** 根据目录获取目录下所有的文件及其子文件，并追加到movies中 */
+func clearPathFile(dir string) error {
+	err := filepath.Walk(dir, func(filename string, fi os.FileInfo, err error) error {
+		if fi == nil {
+			return nil
+		}
+		if fi.IsDir() {
+			return nil
+		}
+		extension := filepath.Ext(filename)
+		if extension == ".torrent" {
+			os.Remove(strings.Replace(filename, "\\", "/", -1))
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+/** 倒序排序 **/
+func puzzle(arr *[]int) {
+	for i := 0; i < len(*arr)-1; i++ {
+		for j := 0; j < len(*arr)-1-i; j++ {
+			var tem = 0
+			if (*arr)[j] < (*arr)[j+1] {
+				tem = (*arr)[j]
+				(*arr)[j] = (*arr)[j+1]
+				(*arr)[j+1] = tem
+			}
+		}
+	}
+}
+
+/*
+* 判断切片中是否存在此元素 **/
+
+func IsElementInSlice(slice []int, target int) bool {
+	sort.Ints(slice)
+	index := sort.SearchInts(slice, target)
+	return index < len(slice) && slice[index] == target
+}
+
+/** 根据目录获取目录下所有的文件及其子文件，并追加到movies中
+ */
 func getPathFile(dir string, movies *Movies) error {
+	MovieMap := make(map[int64]Movie)
+	timestamp := make([]int, 0)
 	err := filepath.Walk(dir, func(filename string, fi os.FileInfo, err error) error {
 		if fi == nil {
 			return nil
@@ -226,11 +288,27 @@ func getPathFile(dir string, movies *Movies) error {
 			var movie Movie
 			movie.Path = strings.Replace(filename, "\\", "/", -1)
 			movie.Name = fi.Name()
-			movies.Movie = append(movies.Movie, movie)
-			movies.Total++
+			currentTimestamp := int(fi.ModTime().UnixMicro())
+
+			if IsElementInSlice(timestamp, currentTimestamp) {
+				currentTimestamp = currentTimestamp + 1
+			}
+			timestamp = append(timestamp, currentTimestamp)
+			movie.Timestamp = int64(currentTimestamp)
+			MovieMap[movie.Timestamp] = movie
 		}
 		return nil
 	})
+
+	puzzle(&timestamp)
+
+	for _, value := range timestamp {
+		if movie, ok := MovieMap[int64(value)]; ok {
+			movies.Movie = append(movies.Movie, movie)
+			movies.Total++
+		}
+	}
+
 	if err != nil {
 		return err
 	}
